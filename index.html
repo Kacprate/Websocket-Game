@@ -2,7 +2,6 @@
 
 <html>
    <head>
-      
       <script type = "text/javascript">
         var ws = null
         if ("WebSocket" in window) {
@@ -41,7 +40,7 @@
         } else {
             
             // The browser doesn't support WebSocket
-            alert("WebSocket NOT supported by your Browser!");
+            alert("WebSocket is not supported by your browser!");
         }
 
         function send_message() {
@@ -65,7 +64,7 @@
             }
 
             if (!(ws && ws.readyState === WebSocket.OPEN)) {
-                alert('You are not connected to the server!')
+                alert('You are not connected to the server!\n/join IP PORT')
                 return
             }
 
@@ -85,11 +84,8 @@
                 send_message()
             }
         });
-
       </script>
-		
    </head>
-   
    <body>
         <input type="text" id="text_input_box" name="text_input_box"><br><br>
         <div id='chatbox'>
