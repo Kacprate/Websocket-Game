@@ -16,15 +16,23 @@ class Status(Enum):
     SUCCESS = 1,
     ERROR = 2
 
+async def handle_leaving(websocket):
+    client_data = connected_clients[websocket]
+    for client in connected_clients.keys():
+        if client != websocket:
+            await client.send(message_module.Message('TEXT', f'{client_data["name"]} left the server.').pack())
 
-def handle_message(websocket, path, client_data, msg):
+async def handle_message(websocket, path, client_data, msg):
     if msg.message_type == 'CONNECTION_CLOSE':
-        return Status.CLOSE, None
+        return Status.CLOSE, f'{client_data["name"]} left the server.'
     elif msg.message_type == 'SET_NAME':
         old_name = client_data['name']
         new_name = msg.data
         client_data['name'] = new_name
-        return Status.SUCCESS, f'Setting name of {old_name} to {new_name}'
+        return Status.SUCCESS, f'Setting name of {old_name} to {new_name}.'
+    elif msg.message_type == "HELLO":
+        await websocket.send(message_module.Message('TEXT', 'Welcome to the server!').pack())
+        return Status.SUCCESS, f'{client_data["name"]} joined the server.'
 
     return Status.SUCCESS, None
 
@@ -34,30 +42,39 @@ async def response(websocket, path):
             ip = websocket.remote_address[0]
             port = websocket.remote_address[1]
 
-            client_data = {'join_time': time.time(), 'ip': ip, 'port': port, 'name': f'ip: {ip}, port: {port}'}
+            client_data = {'join_time': time.time(), 'ip': ip, 'port': port, 'name': f'{ip} [{port}]'}
             connected_clients[websocket] = client_data
-            print(f'Client connected: {client_data["name"]}')
+            logger.info(f'Client connected: {client_data["name"]}')
 
             while True:
                 packed_message = await websocket.recv()
                 message = message_module.Message.from_packed(packed_message)
-                print(f'Message from {client_data["name"]}: {message.data}')
+                logger.info(f'Message from {client_data["name"]}, message_type: {message.message_type}, msg: {message.data}')
 
                 try:
-                    status, result = handle_message(websocket, path, client_data, message)
+                    status, result = await handle_message(websocket, path, client_data, message)
                     if result:
                         logger.info(result)
                 except Exception as e:
-                    print(f'Exception: {e}')
+                    logger.error(f'Exception: {e}')
                     status, result = Status.ERROR, None
 
                 if status == Status.CLOSE:
                     logger.info(f'Client {client_data["name"]} closing connection')
+                    await handle_leaving(websocket)
                     break
                 elif status == Status.ERROR:
                     break
                 elif status == Status.SUCCESS:
                     await websocket.send(message_module.Message('STATUS', True).pack())
+                    if message.message_type == 'TEXT': # redistributing the message over the connected clients (chat)
+                        message.data = client_data['name'] + ': ' + message.data
+                        packed_message = message.pack()
+                        for client in connected_clients.keys():
+                            await client.send(packed_message)
+                    elif message.message_type in ['SET_NAME', 'HELLO']:
+                        for client in connected_clients.keys():
+                            await client.send(message_module.Message('TEXT', result).pack())
 
         else:
             logger.warn(f"Client with that IP and port is already connected")
@@ -65,6 +82,7 @@ async def response(websocket, path):
 
     finally:
         if websocket in connected_clients:
+            await handle_leaving(websocket)
             del connected_clients[websocket]
 
         await websocket.close()

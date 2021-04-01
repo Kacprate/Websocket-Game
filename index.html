@@ -1,0 +1,99 @@
+<!DOCTYPE HTML>
+
+<html>
+   <head>
+      
+      <script type = "text/javascript">
+        var ws = null
+        if ("WebSocket" in window) {
+            function openWebSocket(ip, port) {
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    ws.close()
+                }
+
+                try {
+                    ws = new WebSocket("ws://" + ip + ":" + port + "/");
+                    document.getElementById("chatbox").innerHTML = ""
+                } catch (error) {
+                    alert('Can not open websocket on that ip and port!')
+                    return
+                }
+            
+                ws.onopen = function() {
+                    
+                    let data = JSON.stringify({'message_type': 'HELLO', 'data': ''});
+                    ws.send(data)
+                };
+                
+                ws.onmessage = function (evt) { 
+                    var received_msg = JSON.parse(evt.data);
+
+                    if (received_msg.message_type == "TEXT") {
+                        document.getElementById("chatbox").innerHTML += '<br>' + received_msg.data
+                    }
+                };
+                
+                ws.onclose = function() { 
+                    alert("Connection is closed."); 
+                };
+            }
+            
+        } else {
+            
+            // The browser doesn't support WebSocket
+            alert("WebSocket NOT supported by your Browser!");
+        }
+
+        function send_message() {
+            message = document.getElementById('text_input_box').value
+            if (message == '') {
+                return
+            }
+            document.getElementById('text_input_box').value = ''
+
+            if (message.startsWith('/join')) {
+                let split_msg = message.split(' ')
+                if (split_msg.length == 3) {
+                    let ip = split_msg[1]
+                    let port = split_msg[2]
+                    openWebSocket(ip, port)
+                    return
+                } else {
+                    alert('Incorrect arguments')
+                    return
+                }
+            }
+
+            if (!(ws && ws.readyState === WebSocket.OPEN)) {
+                alert('You are not connected to the server!')
+                return
+            }
+
+            if (message.startsWith('/setname')) {
+                let new_msg = message.split(' ').slice(1).join(' ')
+                let data = JSON.stringify({'message_type': 'SET_NAME', 'data': new_msg});
+                ws.send(data)
+                return
+            }
+
+            let data = JSON.stringify({'message_type': 'TEXT', 'data': message});
+            ws.send(data)
+        }
+
+        document.addEventListener("keyup", function(event) {
+            if (event.keyCode === 13) {
+                send_message()
+            }
+        });
+
+      </script>
+		
+   </head>
+   
+   <body>
+        <input type="text" id="text_input_box" name="text_input_box"><br><br>
+        <div id='chatbox'>
+            Join a server: /join IP PORT
+        </div>
+   </body>
+</html>
