@@ -17,8 +17,14 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--server', action='store_true', help='Run as server', default=False)
     
-    ip = input('Server ip: ')
-    port = input('Server port: ')
+    ip = input('Server ip (default: localhost): ')
+    port = input('Server port (default: 1234): ')
+
+    if ip == '':
+        ip = 'localhost'
+
+    if port == '':
+        port = 1234
 
     try:
         port = int(port)
