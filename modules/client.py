@@ -75,7 +75,11 @@ def run(ip, port):
                                  on_close=on_close,
                                  on_open=on_open)
 
-    thread = Thread(target=app.run_forever)
-    thread.start()
+    threads = [Thread(target=func, args=args) for func, args in [(app.run_forever, ()), 
+                                                                 (game_thread, (app, ))]]
+    
+    for thread in threads:
+        thread.start()
 
-    game_thread(app)
+    for thread in threads:
+        thread.join()

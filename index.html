@@ -67,8 +67,7 @@
             }
 
             if (message.startsWith('/setname')) {
-                let new_msg = message.split(' ').slice(1).join(' ')
-                let data = JSON.stringify({'message_type': 'SET_NAME', 'data': new_msg});
+                let data = JSON.stringify({'message_type': 'TEXT', 'data': message});
                 ws.send(data)
                 return
             }
